@@ -1,0 +1,7 @@
+*.obj
+*.h
+*.png
+*.exe
+.vs*
+*.pdb
+*.ilk
