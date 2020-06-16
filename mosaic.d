@@ -11,6 +11,8 @@ void writeln_var(alias var)() {
     writeln(__traits(identifier, var), " = ", var);
 }
 
+// TODO: stretch image so there's a discrete number of tiles?????
+
 image make_mosaic(image im, int width, int height, int count, float blend) {
     import std.math : trunc, lrint, ceil;
     
@@ -34,12 +36,14 @@ image make_mosaic(image im, int width, int height, int count, float blend) {
             int end_x = start_x + cast(int) tile_width;
             int end_y = start_y + cast(int) tile_height;
             
+            end_x = clamp_upper(end_x, im.width - 1);
+            end_y = clamp_upper(end_y, im.height - 1);
+            
             v4 acc = v4(0, 0, 0, 0);
             int acc_count = 0;
             foreach(y; start_y..end_y) {
                 foreach (x; start_x..end_x) {
                     acc_count++;
-                    if (x >= im.width || y >= im.height) break;
                     acc += im.get_pixel(x, y).rgba_to_v4;
                 }
             }
