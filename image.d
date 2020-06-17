@@ -21,30 +21,6 @@ pragma(inline) v4 rgba_to_v4(uint u) {
     return result;
 }
 
-ubyte rgba_get_alpha(uint p) {
-    return cast(ubyte) (p >> 24);
-}
-
-float get_value(v4 v) {
-    import std.algorithm : max;
-    return max(v.r, v.g, v.b);
-}
-
-float get_value(uint p) {
-    __gshared float[1<<24] rgb_value_memo;
-    
-    float *ptr = &rgb_value_memo[p & 0x00ffffff];
-    if (*ptr) return *ptr;
-    
-    float result = get_value(rgba_to_v4(p));
-    *ptr = result;
-    return result;
-}
-
-uint rgba_2_average(uint a, uint b) {
-    return lerp(a.rgba_to_v4, 0.5f, b.rgba_to_v4).v4_to_rgba;
-}
-
 struct image {
     int width;
     int height;

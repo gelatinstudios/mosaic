@@ -31,6 +31,14 @@ struct v4 {
     }
 }
 
+void clamp(T)(float min, T *v, float max) if (is(T == v4)) {
+    import math : clamp;
+    clamp(min, &v.x, max);
+    clamp(min, &v.y, max);
+    clamp(min, &v.z, max);
+    clamp(min, &v.w, max);
+}
+
 v4 lerp(v4 a, float t, v4 b) {
     return (1.0f - t)*a + t*b;
 }

@@ -31,6 +31,10 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
     float traversal_width = tile_width/scale;
     float traversal_height = tile_height/scale;
     
+    // TODO: the casting here is a bit dodgy
+    
+    int pixel_count = cast(int)traversal_width * cast(int)traversal_height;
+    
     v4[] lerp_lut;
     lerp_lut.length = tile_count;
     int lerp_lut_index = 0;
@@ -38,35 +42,32 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
         foreach (ix; 0..row_count) {
             int start_x = cast(int) (ix*traversal_width);
             int start_y = cast(int) (iy*traversal_height);
-            int end_x = start_x + cast(int) (traversal_width)  + 1;
-            int end_y = start_y + cast(int) (traversal_height) + 1;
+            int end_x = start_x + cast(int) (traversal_width);
+            int end_y = start_y + cast(int) (traversal_height);
             
-            end_x = clamp_upper(end_x, im.width-1);
-            end_y = clamp_upper(end_y, im.height-1);
-            
-            // TODO: this should never change, hoist this out
-            int pixel_count = (end_x - start_x)*(end_y - start_y);
+            //end_x = clamp_upper(end_x, im.width);
+            //end_y = clamp_upper(end_y, im.height);
             
             v4 acc = v4(0, 0, 0, 0);
+            float contrib = 1.0f/pixel_count;
             foreach(y; start_y..end_y) {
                 foreach (x; start_x..end_x) {
-                    acc += im.get_pixel(x, y).rgba_to_v4;
+                    acc += im.get_pixel(x, y).rgba_to_v4*contrib;
                 }
             }
             
-            lerp_lut[lerp_lut_index++] = acc*(1.0f/pixel_count);
+            lerp_lut[lerp_lut_index++] = acc;
         }
     }
     
     v4 cubic_hermite(v4 A, v4 B, v4 C, v4 D, float t) {
-        assert(t >= 0.0f && t <= 1.0f);
         // NOTE: https://www.shadertoy.com/view/MllSzX
         float t2 = t*t;
         float t3 = t*t*t;
         
-        v4 a = -1.0f*A*0.5f + (3.0f*B)*0.5f - (3.0f*C)*0.5f + D*0.5f;
+        v4 a = -A*0.5f + (3.0f*B)*0.5f - (3.0f*C)*0.5f + D*0.5f;
         v4 b = A - (5.0*B)*0.5f + 2.0f*C - D*0.5f;
-        v4 c = -1.0f*A*0.5f + C*0.5f;
+        v4 c = -A*0.5f + C*0.5f;
         v4 d = B;
         
         return a*t3 + b*t2 + c*t + d;
@@ -127,8 +128,12 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
             
             v4 output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
             
+            clamp(0.0f, &output, 255.0f);
+            
             int lerp_index = blend_y*row_count + blend_x;
-            *dest++ = lerp(output, blend, lerp_lut[lerp_index]).v4_to_rgba;
+            auto output_pixel = v4_to_rgba(lerp(output, blend, lerp_lut[lerp_index]));
+            
+            *dest++ = output_pixel;
         }
     }
     
