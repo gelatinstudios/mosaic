@@ -1,5 +1,5 @@
 
-    import core.stdc.stdlib : EXIT_SUCCESS, EXIT_FAILURE, exit;
+import core.stdc.stdlib : EXIT_SUCCESS, EXIT_FAILURE, exit;
 import std.stdio;
 
 import math;
@@ -10,8 +10,6 @@ void writeln_var(alias var)() {
     import std.traits;
     writeln(__traits(identifier, var), " = ", var);
 }
-
-// TODO: stretch image so there's a discrete number of tiles?????
 
 image make_mosaic(image im, float scale, int row_count, float blend) {
     import std.math : trunc, lrint, ceil;
