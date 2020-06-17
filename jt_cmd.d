@@ -4,7 +4,7 @@ import std.conv : to;
 T parse_commandline_arguments(T)(string []args) if (is(T == struct)) {
     T result;
     
-    for (size_t i = 0; i < args.length; ++i) {
+    for (size_t i = 1; i < args.length; ++i) {
         const arg = args[i];
         
         if (arg[0] == '-') {
@@ -52,7 +52,7 @@ auto parse_commandline_arguments_with_is_set(T)(string []args) if (is(T == struc
     is_set_type is_set;
     T result;
     
-    for (size_t i = 0; i < args.length; ++i) {
+    for (size_t i = 1; i < args.length; ++i) {
         const arg = args[i];
         
         if (arg[0] == '-') {

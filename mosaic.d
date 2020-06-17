@@ -13,42 +13,50 @@ void writeln_var(alias var)() {
 
 // TODO: stretch image so there's a discrete number of tiles?????
 
-image make_mosaic(image im, int width, int height, int count, float blend) {
+image make_mosaic(image im, float scale, int row_count, float blend) {
     import std.math : trunc, lrint, ceil;
+    
+    int width  = cast(int) (im.width*scale);
+    int height = cast(int) (im.height*scale);
     
     image result = image_init(width, height);
     
-    float area = width*height;
-    float aspect_ratio = cast(float) width/height;
+    int tile_count = square(row_count);
     
-    float tile_area = area/count;
+    float area = width*height;
+    float aspect_ratio = cast(float) im.width/im.height;
+    
+    float tile_area = area/tile_count;
     float tile_height = square_root(tile_area/aspect_ratio);
     float tile_width  = tile_area/tile_height;
     
-    int x_tile_count = cast(int) ceil(width/tile_width);
-    int y_tile_count = cast(int) ceil(height/tile_height);
+    float traversal_width = tile_width/scale;
+    float traversal_height = tile_height/scale;
     
     v4[] lerp_lut;
-    for (float ty = 0.0f; ty < im.height; ty += tile_height) {
-        for (float tx = 0.0f; tx < im.width; tx += tile_width) {
-            int start_x = cast(int) tx;
-            int start_y = cast(int) ty;
-            int end_x = start_x + cast(int) tile_width;
-            int end_y = start_y + cast(int) tile_height;
+    lerp_lut.length = tile_count;
+    int lerp_lut_index = 0;
+    foreach (iy; 0..row_count) {
+        foreach (ix; 0..row_count) {
+            int start_x = cast(int) (ix*traversal_width);
+            int start_y = cast(int) (iy*traversal_height);
+            int end_x = start_x + cast(int) (traversal_width)  + 1;
+            int end_y = start_y + cast(int) (traversal_height) + 1;
             
-            end_x = clamp_upper(end_x, im.width - 1);
-            end_y = clamp_upper(end_y, im.height - 1);
+            end_x = clamp_upper(end_x, im.width-1);
+            end_y = clamp_upper(end_y, im.height-1);
+            
+            // TODO: this should never change, hoist this out
+            int pixel_count = (end_x - start_x)*(end_y - start_y);
             
             v4 acc = v4(0, 0, 0, 0);
-            int acc_count = 0;
             foreach(y; start_y..end_y) {
                 foreach (x; start_x..end_x) {
-                    acc_count++;
                     acc += im.get_pixel(x, y).rgba_to_v4;
                 }
             }
             
-            lerp_lut ~= acc*(1.0f/acc_count);
+            lerp_lut[lerp_lut_index++] = acc*(1.0f/pixel_count);
         }
     }
     
@@ -58,8 +66,8 @@ image make_mosaic(image im, int width, int height, int count, float blend) {
             float u = x / (tile_width);
             float v = y / (tile_height);
             
-            int blend_x = cast(int) u;
-            int blend_y = cast(int) v;
+            int blend_x = cast(int) (u);
+            int blend_y = cast(int) (v);
             
             u -= trunc(u);
             v -= trunc(v);
@@ -79,7 +87,7 @@ image make_mosaic(image im, int width, int height, int count, float blend) {
             v4 texel_d = im.get_pixel(texel_x + 1, texel_y + 1).rgba_to_v4;
             
             v4 output = lerp(lerp(texel_a, tx, texel_b), ty, lerp(texel_c, tx, texel_d));
-            int lerp_index = blend_y*x_tile_count + blend_x;
+            int lerp_index = blend_y*row_count + blend_x;
             *dest++ = lerp(output, blend, lerp_lut[lerp_index]).v4_to_rgba;
         }
     }
@@ -88,9 +96,8 @@ image make_mosaic(image im, int width, int height, int count, float blend) {
 }
 
 struct cmd_options {
-    int width;
-    int height;
-    int count = 200;
+    float scale = 1.0f;
+    int count = 20;
     float blend = 0.5f;
     
     int png_comp_level = 8;
@@ -144,12 +151,9 @@ int main(string[] args) {
         return EXIT_FAILURE;
     }
     
-    if (!cmd.width)  cmd.width  = im.width;
-    if (!cmd.height) cmd.height = im.height;
-    
     writeln("in: ", input); stdout.flush;
     
-    image mosaic = make_mosaic(im, cmd.width, cmd.height, cmd.count, cmd.blend);
+    image mosaic = make_mosaic(im, cmd.scale, cmd.count, cmd.blend);
     
     mosaic.write_out_image(output, cmd.jpg_quality);
     writeln("out: ", output);
