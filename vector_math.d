@@ -5,6 +5,10 @@ struct v4 {
         struct { float r, g, b, a; };
     }
     
+    v4 opUnary(string op)() if (op == "-") {
+        return v4(-x, -y, -z, -w);
+    }
+    
     v4 opBinary(string op)(v4 l) if (op == "+" || op == "-") {
         mixin("return v4(x" ~ op ~ "l.x, y" ~ op ~ "l.y, z" ~ op ~ "l.z, w" ~ op ~ "l.w);");
     }

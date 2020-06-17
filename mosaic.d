@@ -11,8 +11,8 @@ void writeln_var(alias var)() {
     writeln(__traits(identifier, var), " = ", var);
 }
 
-image make_mosaic(image im, float scale, int row_count, float blend) {
-    import std.math : trunc, lrint, ceil;
+image make_mosaic(image im, float scale, int row_count, float blend, bool flip) {
+    import std.math : trunc;
     
     int width  = cast(int) (im.width*scale);
     int height = cast(int) (im.height*scale);
@@ -58,6 +58,20 @@ image make_mosaic(image im, float scale, int row_count, float blend) {
         }
     }
     
+    v4 cubic_hermite(v4 A, v4 B, v4 C, v4 D, float t) {
+        assert(t >= 0.0f && t <= 1.0f);
+        // NOTE: https://www.shadertoy.com/view/MllSzX
+        float t2 = t*t;
+        float t3 = t*t*t;
+        
+        v4 a = -1.0f*A*0.5f + (3.0f*B)*0.5f - (3.0f*C)*0.5f + D*0.5f;
+        v4 b = A - (5.0*B)*0.5f + 2.0f*C - D*0.5f;
+        v4 c = -1.0f*A*0.5f + C*0.5f;
+        v4 d = B;
+        
+        return a*t3 + b*t2 + c*t + d;
+    }
+    
     uint *dest = result.pixels;
     foreach (y; 0..height) {
         foreach (x; 0..width) {
@@ -70,8 +84,15 @@ image make_mosaic(image im, float scale, int row_count, float blend) {
             u -= trunc(u);
             v -= trunc(v);
             
-            float src_x = u * (im.width-1);
-            float src_y = v * (im.height-1);
+            if (flip && (blend_x & 1)) {
+                u = 1.0f - u;
+            }
+            
+            float src_x = u * (im.width);
+            float src_y = v * (im.height);
+            
+            clamp(1.0f, &src_x, cast(float) (im.width-3));
+            clamp(1.0f, &src_y, cast(float) (im.height-3));
             
             int texel_x = cast(int) src_x;
             int texel_y = cast(int) src_y;
@@ -79,12 +100,33 @@ image make_mosaic(image im, float scale, int row_count, float blend) {
             float tx = src_x - texel_x;
             float ty = src_y - texel_y;
             
-            v4 texel_a = im.get_pixel(texel_x, texel_y).rgba_to_v4;
-            v4 texel_b = im.get_pixel(texel_x + 1, texel_y).rgba_to_v4;
-            v4 texel_c = im.get_pixel(texel_x, texel_y + 1).rgba_to_v4;
-            v4 texel_d = im.get_pixel(texel_x + 1, texel_y + 1).rgba_to_v4;
+            v4 texel00 = im.get_pixel(texel_x - 1, texel_y - 1).rgba_to_v4;
+            v4 texel10 = im.get_pixel(texel_x + 0, texel_y - 1).rgba_to_v4;
+            v4 texel20 = im.get_pixel(texel_x + 1, texel_y - 1).rgba_to_v4;
+            v4 texel30 = im.get_pixel(texel_x + 2, texel_y - 1).rgba_to_v4;
             
-            v4 output = lerp(lerp(texel_a, tx, texel_b), ty, lerp(texel_c, tx, texel_d));
+            v4 texel01 = im.get_pixel(texel_x - 1, texel_y + 0).rgba_to_v4;
+            v4 texel11 = im.get_pixel(texel_x + 0, texel_y + 0).rgba_to_v4;
+            v4 texel21 = im.get_pixel(texel_x + 1, texel_y + 0).rgba_to_v4;
+            v4 texel31 = im.get_pixel(texel_x + 2, texel_y + 0).rgba_to_v4;
+            
+            v4 texel02 = im.get_pixel(texel_x - 1, texel_y + 1).rgba_to_v4;
+            v4 texel12 = im.get_pixel(texel_x + 0, texel_y + 1).rgba_to_v4;
+            v4 texel22 = im.get_pixel(texel_x + 1, texel_y + 1).rgba_to_v4;
+            v4 texel32 = im.get_pixel(texel_x + 2, texel_y + 1).rgba_to_v4;
+            
+            v4 texel03 = im.get_pixel(texel_x - 1, texel_y + 2).rgba_to_v4;
+            v4 texel13 = im.get_pixel(texel_x + 0, texel_y + 2).rgba_to_v4;
+            v4 texel23 = im.get_pixel(texel_x + 1, texel_y + 2).rgba_to_v4;
+            v4 texel33 = im.get_pixel(texel_x + 2, texel_y + 2).rgba_to_v4;
+            
+            v4 texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
+            v4 texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
+            v4 texel2x = cubic_hermite(texel02, texel12, texel22, texel32, tx);
+            v4 texel3x = cubic_hermite(texel03, texel13, texel23, texel33, tx);
+            
+            v4 output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
+            
             int lerp_index = blend_y*row_count + blend_x;
             *dest++ = lerp(output, blend, lerp_lut[lerp_index]).v4_to_rgba;
         }
@@ -97,6 +139,7 @@ struct cmd_options {
     float scale = 1.0f;
     int count = 20;
     float blend = 0.5f;
+    bool flip = false;
     
     int png_comp_level = 8;
     int jpg_quality = 100;
@@ -123,7 +166,7 @@ int main(string[] args) {
     for (size_t i = 1; i < args.length; ++i) {
         const arg = args[i];
         if (arg[0] == '-') {
-            ++i;
+            if (arg != "-flip") ++i;
             continue;
         }
         filenames ~= arg;
@@ -151,7 +194,7 @@ int main(string[] args) {
     
     writeln("in: ", input); stdout.flush;
     
-    image mosaic = make_mosaic(im, cmd.scale, cmd.count, cmd.blend);
+    image mosaic = make_mosaic(im, cmd.scale, cmd.count, cmd.blend, cmd.flip);
     
     mosaic.write_out_image(output, cmd.jpg_quality);
     writeln("out: ", output);

@@ -1,7 +1,7 @@
 
 import vector_math;
 
-uint v4_to_rgba(v4 v) {
+pragma(inline) uint v4_to_rgba(v4 v) {
     import std.math : lrint;
     
     uint result = 0;
@@ -12,7 +12,7 @@ uint v4_to_rgba(v4 v) {
     return result;
 }
 
-v4 rgba_to_v4(uint u) {
+pragma(inline) v4 rgba_to_v4(uint u) {
     v4 result;
     result.r = cast(ubyte) (u);
     result.g = cast(ubyte) (u >> 8);
@@ -62,7 +62,7 @@ image image_init(int width, int height) {
     return result;
 }
 
-uint get_pixel(image im, int x, int y) {
+pragma(inline) uint get_pixel(image im, int x, int y) {
     assert(x >= 0 && x < im.width && y >= 0 && y < im.height);
     return *(im.pixels + im.width*y + x);
 }
