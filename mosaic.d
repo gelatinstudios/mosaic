@@ -21,12 +21,8 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
     
     int tile_count = square(row_count);
     
-    float area = width*height;
-    float aspect_ratio = cast(float) im.width/im.height;
-    
-    float tile_area = area/tile_count;
-    float tile_height = square_root(tile_area/aspect_ratio);
-    float tile_width  = tile_area/tile_height;
+    float tile_height = height/row_count;
+    float tile_width  = width/row_count;
     
     float traversal_width = tile_width/scale;
     float traversal_height = tile_height/scale;

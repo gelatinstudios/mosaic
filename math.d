@@ -3,7 +3,7 @@ T square(T)(T x) {
     return x*x;
 }
 
-float square_root(float x) {
+pragma(inline) float square_root(float x) {
     asm { sqrtss XMM0, x; }
 }
 
