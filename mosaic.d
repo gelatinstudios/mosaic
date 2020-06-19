@@ -11,7 +11,7 @@ void writeln_var(alias var)() {
     writeln(__traits(identifier, var), " = ", var);
 }
 
-image make_mosaic(image im, float scale, int row_count, float blend, bool flip) {
+image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) {
     import std.math : trunc;
     import core.simd;
     
@@ -58,7 +58,7 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
         }
     }
     
-    v4_lane cubic_hermite(v4_lane A, v4_lane B, v4_lane C, v4_lane D, float4 t) {
+    v4_lane cubic_hermite(ref v4_lane A, ref v4_lane B, ref v4_lane C, ref v4_lane D, ref float4 t) {
         // NOTE: https://www.shadertoy.com/view/MllSzX
         float4 one_half = 0.5f;
         float4 two      = 2.0f;
@@ -68,12 +68,12 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
         float4 t2 = t*t;
         float4 t3 = t*t2;
         
-        v4_lane half_A = A*one_half;
-        v4_lane half_B = B*one_half;
-        v4_lane half_C = C*one_half;
-        v4_lane half_D = D*one_half;
+        v4_lane  half_A = A*one_half;
+        v4_lane  half_B = B*one_half;
+        v4_lane  half_C = C*one_half;
+        v4_lane  half_D = D*one_half;
         
-        v4_lane neg_half_A = -half_A;
+        v4_lane  neg_half_A = -half_A;
         
         v4_lane a = neg_half_A + three*half_B - three*half_C + half_D;
         v4_lane b = A - five*half_B + two*C - half_D;
@@ -141,8 +141,7 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
             u -= truncate(u);
             v -= truncate(v);
             
-            // TODO: do this with a movemask instead
-            if (flip) {
+            static if (flip) {
                 float4 flipped_u = f_one - u;
                 static foreach(i; 0..4) {
                     if (blend_x.array[i] & 1) {
@@ -200,7 +199,11 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
             
             v4_lane output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
             
-            clamp(f_zero, &output, f_255);
+            // NOTE: the compiler wouldn't inline this
+            clamp(f_zero, &output.r, f_255);
+            clamp(f_zero, &output.g, f_255);
+            clamp(f_zero, &output.b, f_255);
+            clamp(f_zero, &output.a, f_255);
             
             v4_lane big_image_blend;
             int index;
@@ -239,6 +242,7 @@ extern extern (C) int stbi_write_png_compression_level;
 
 int main(string[] args) {
     import std.path : extension;
+    import core.time;
     import jt_cmd;
     
     bool check_extension(string filename) {
@@ -284,8 +288,14 @@ int main(string[] args) {
     
     writeln("in: ", input); stdout.flush;
     
-    image mosaic = make_mosaic(im, cmd.scale, cmd.count, cmd.blend, cmd.flip);
+    auto start = MonoTime.currTime;
+    image mosaic;
+    if (cmd.flip) mosaic = make_mosaic!true(im, cmd.scale, cmd.count, cmd.blend);
+    else          mosaic = make_mosaic!false(im, cmd.scale, cmd.count, cmd.blend);
+    auto end = MonoTime.currTime;
     
+    double elapsed = (end - start).total!"msecs" / 1000.0;
+    writeln(elapsed, " s");
     writeln("finished. writing out image..."); stdout.flush;
     
     mosaic.write_out_image(output, cmd.jpg_quality);

@@ -28,11 +28,11 @@ T clamp(T)(T min, T *x, T max) {
 import core.simd;
 import vector_math;
 
-float4 clamp(float4 min, float4 *f, float4 max) {
+pragma(inline) float4 clamp(float4 min, float4 *f, float4 max) {
     return *f = simd!(XMM.MINPS)(max, simd!(XMM.MAXPS)(min, *f));
 }
 
-v4_lane clamp(float4 min, v4_lane *v, float4 max) {
+pragma(inline) v4_lane clamp(float4 min, v4_lane *v, float4 max) {
     clamp(min, &v.r, max);
     clamp(min, &v.g, max);
     clamp(min, &v.b, max);

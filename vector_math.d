@@ -81,6 +81,6 @@ T lerp(T)(T a, float t, T b) {
     return (1.0f - t)*a + t*b;
 }
 
-v4_lane lerp(v4_lane a, float4 t, v4_lane b) {
+v4_lane lerp(ref v4_lane a, float4 t, ref v4_lane b) {
     return (1.0f - t)*a + t*b;
 }

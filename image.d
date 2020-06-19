@@ -64,14 +64,14 @@ image image_init(int width, int height) {
     return result;
 }
 
-pragma(inline) uint get_pixel(image im, int x, int y) {
+uint get_pixel(image im, int x, int y) {
     assert(x >= 0 && x < im.width && y >= 0 && y < im.height);
     return *(im.pixels + im.width*y + x);
 }
 
 import core.simd;
 
-pragma(inline) uint4 get_pixel4(image im, int4 x, int4 y) {
+uint4 get_pixel4(image im, int4 x, int4 y) {
     // TODO: simd?
     uint4 result;
     static foreach(i; 0..4)
