@@ -66,11 +66,18 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
         float4 five     = 5.0f;
         
         float4 t2 = t*t;
-        float4 t3 = t*t*t;
+        float4 t3 = t*t2;
         
-        v4_lane a = -A*one_half + (three*B)*one_half - (three*C)*one_half + D*one_half;
-        v4_lane b = A - (five*B)*one_half + two*C - D*one_half;
-        v4_lane c = -A*one_half + C*one_half;
+        v4_lane half_A = A*one_half;
+        v4_lane half_B = B*one_half;
+        v4_lane half_C = C*one_half;
+        v4_lane half_D = D*one_half;
+        
+        v4_lane neg_half_A = -half_A;
+        
+        v4_lane a = neg_half_A + three*half_B - three*half_C + half_D;
+        v4_lane b = A - five*half_B + two*C - half_D;
+        v4_lane c = neg_half_A + half_C;
         v4_lane d = B;
         
         return a*t3 + b*t2 + c*t + d;
@@ -138,7 +145,6 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
                 }
             }
             
-            
             float4 src_x = u * (im_width);
             float4 src_y = v * (im_height);
             
@@ -151,25 +157,35 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
             float4 tx = src_x - truncate(src_x);
             float4 ty = src_y - truncate(src_y);
             
-            v4_lane texel00 = im.get_pixel4(texel_x - one, texel_y - one).rgba4_to_v4_lane;
-            v4_lane texel10 = im.get_pixel4(texel_x, texel_y - one).rgba4_to_v4_lane;
-            v4_lane texel20 = im.get_pixel4(texel_x + one, texel_y - one).rgba4_to_v4_lane;
-            v4_lane texel30 = im.get_pixel4(texel_x + two, texel_y - one).rgba4_to_v4_lane;
+            int4  x0 = texel_x - one;
+            alias x1 = texel_x;
+            int4  x2 = texel_x + one;
+            int4  x3 = texel_x + two;
             
-            v4_lane texel01 = im.get_pixel4(texel_x - one, texel_y).rgba4_to_v4_lane;
-            v4_lane texel11 = im.get_pixel4(texel_x, texel_y).rgba4_to_v4_lane;
-            v4_lane texel21 = im.get_pixel4(texel_x + one, texel_y).rgba4_to_v4_lane;
-            v4_lane texel31 = im.get_pixel4(texel_x + two, texel_y).rgba4_to_v4_lane;
+            int4  y0 = texel_y - one;
+            alias y1 = texel_y;
+            int4  y2 = texel_y + one;
+            int4  y3 = texel_y + two;
             
-            v4_lane texel02 = im.get_pixel4(texel_x - one, texel_y + one).rgba4_to_v4_lane;
-            v4_lane texel12 = im.get_pixel4(texel_x, texel_y + one).rgba4_to_v4_lane;
-            v4_lane texel22 = im.get_pixel4(texel_x + one, texel_y + one).rgba4_to_v4_lane;
-            v4_lane texel32 = im.get_pixel4(texel_x + two, texel_y + one).rgba4_to_v4_lane;
+            v4_lane texel00 = im.get_pixel4(x0, y0).rgba4_to_v4_lane;
+            v4_lane texel10 = im.get_pixel4(x1, y0).rgba4_to_v4_lane;
+            v4_lane texel20 = im.get_pixel4(x2, y0).rgba4_to_v4_lane;
+            v4_lane texel30 = im.get_pixel4(x3, y0).rgba4_to_v4_lane;
             
-            v4_lane texel03 = im.get_pixel4(texel_x - one, texel_y + two).rgba4_to_v4_lane;
-            v4_lane texel13 = im.get_pixel4(texel_x, texel_y + two).rgba4_to_v4_lane;
-            v4_lane texel23 = im.get_pixel4(texel_x + one, texel_y + two).rgba4_to_v4_lane;
-            v4_lane texel33 = im.get_pixel4(texel_x + two, texel_y + two).rgba4_to_v4_lane;
+            v4_lane texel01 = im.get_pixel4(x0, y1).rgba4_to_v4_lane;
+            v4_lane texel11 = im.get_pixel4(x1, y1).rgba4_to_v4_lane;
+            v4_lane texel21 = im.get_pixel4(x2, y1).rgba4_to_v4_lane;
+            v4_lane texel31 = im.get_pixel4(x3, y1).rgba4_to_v4_lane;
+            
+            v4_lane texel02 = im.get_pixel4(x0, y2).rgba4_to_v4_lane;
+            v4_lane texel12 = im.get_pixel4(x1, y2).rgba4_to_v4_lane;
+            v4_lane texel22 = im.get_pixel4(x2, y2).rgba4_to_v4_lane;
+            v4_lane texel32 = im.get_pixel4(x3, y2).rgba4_to_v4_lane;
+            
+            v4_lane texel03 = im.get_pixel4(x0, y3).rgba4_to_v4_lane;
+            v4_lane texel13 = im.get_pixel4(x1, y3).rgba4_to_v4_lane;
+            v4_lane texel23 = im.get_pixel4(x2, y3).rgba4_to_v4_lane;
+            v4_lane texel33 = im.get_pixel4(x3, y3).rgba4_to_v4_lane;
             
             v4_lane texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
             v4_lane texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
