@@ -68,12 +68,12 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
         float4 t2 = t*t;
         float4 t3 = t*t2;
         
-        v4_lane  half_A = A*one_half;
-        v4_lane  half_B = B*one_half;
-        v4_lane  half_C = C*one_half;
-        v4_lane  half_D = D*one_half;
+        v4_lane half_A = A*one_half;
+        v4_lane half_B = B*one_half;
+        v4_lane half_C = C*one_half;
+        v4_lane half_D = D*one_half;
         
-        v4_lane  neg_half_A = -half_A;
+        v4_lane neg_half_A = -half_A;
         
         v4_lane a = neg_half_A + three*half_B - three*half_C + half_D;
         v4_lane b = A - five*half_B + two*C - half_D;
