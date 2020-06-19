@@ -13,6 +13,7 @@ void writeln_var(alias var)() {
 
 image make_mosaic(image im, float scale, int row_count, float blend, bool flip) {
     import std.math : trunc;
+    import core.simd;
     
     int width  = cast(int) (im.width*scale);
     int height = cast(int) (im.height*scale);
@@ -21,13 +22,14 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
     
     int tile_count = square(row_count);
     
-    float tile_height = height/row_count;
-    float tile_width  = width/row_count;
+    float s_tile_width = cast(float)width / row_count;
+    float s_tile_height = cast(float)height / row_count;
     
-    float traversal_width = tile_width/scale;
-    float traversal_height = tile_height/scale;
+    float4 tile_width  = s_tile_width;
+    float4 tile_height = s_tile_height;
     
-    // TODO: the casting here is a bit dodgy
+    float traversal_width  = s_tile_width/scale;
+    float traversal_height = s_tile_height/scale;
     
     int pixel_count = cast(int)traversal_width * cast(int)traversal_height;
     
@@ -56,80 +58,145 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
         }
     }
     
-    v4 cubic_hermite(v4 A, v4 B, v4 C, v4 D, float t) {
+    v4_lane cubic_hermite(v4_lane A, v4_lane B, v4_lane C, v4_lane D, float4 t) {
         // NOTE: https://www.shadertoy.com/view/MllSzX
-        float t2 = t*t;
-        float t3 = t*t*t;
+        float4 one_half = 0.5f;
+        float4 two      = 2.0f;
+        float4 three    = 3.0f;
+        float4 five     = 5.0f;
         
-        v4 a = -A*0.5f + (3.0f*B)*0.5f - (3.0f*C)*0.5f + D*0.5f;
-        v4 b = A - (5.0*B)*0.5f + 2.0f*C - D*0.5f;
-        v4 c = -A*0.5f + C*0.5f;
-        v4 d = B;
+        float4 t2 = t*t;
+        float4 t3 = t*t*t;
+        
+        v4_lane a = -A*one_half + (three*B)*one_half - (three*C)*one_half + D*one_half;
+        v4_lane b = A - (five*B)*one_half + two*C - D*one_half;
+        v4_lane c = -A*one_half + C*one_half;
+        v4_lane d = B;
         
         return a*t3 + b*t2 + c*t + d;
     }
     
+    import core.stdc.fenv;
+    fesetround(FE_TOWARDZERO);
+    
+    float4 truncate(float4 x) {
+        int4 i = simd!(XMM.CVTPS2DQ)(x);
+        return simd!(XMM.CVTDQ2PS)(i);
+    }
+    
+    float4 to_float4(int4 i) {
+        return simd!(XMM.CVTDQ2PS)(i);
+    }
+    
+    int4 to_int4(float4 f) {
+        return simd!(XMM.CVTPS2DQ)(f);
+    }
+    
+    int4 imwidth  = im.width;
+    int4 imheight = im.height;
+    
+    float4 im_width  = to_float4(imwidth);
+    float4 im_height = to_float4(imheight);
+    
+    int4 one = 1;
+    int4 two = 2;
+    
+    float4 f_one = 1.0f;
+    
+    float4 offsets = [0, 1, 2, 3];
+    
+    int4 row_count4 = row_count;
+    
+    auto init_advance = width % 4;
     uint *dest = result.pixels;
     foreach (y; 0..height) {
-        foreach (x; 0..width) {
-            float u = x / (tile_width);
-            float v = y / (tile_height);
+        auto advance = init_advance;
+        for (auto x = 0; x < width; ) {
+            int4 x4i = x;
+            int4 y4i = y;
             
-            int blend_x = cast(int) (u);
-            int blend_y = cast(int) (v);
+            float4 x4 = to_float4(x4i);
+            float4 y4 = to_float4(y4i);
+            x4 += offsets;
             
-            u -= trunc(u);
-            v -= trunc(v);
+            float4 u = x4 / tile_width;
+            float4 v = y4 / tile_height;
             
-            if (flip && (blend_x & 1)) {
-                u = 1.0f - u;
+            int4 blend_x = to_int4(u);
+            int4 blend_y = to_int4(v);
+            
+            u -= truncate(u);
+            v -= truncate(v);
+            
+            // TODO: do this with a movemask instead
+            if (flip) {
+                float4 flipped_u = f_one - u;
+                static foreach(i; 0..4) {
+                    if (blend_x.array[i] & 1) {
+                        u.array[i] = flipped_u.array[i];
+                    }
+                }
             }
             
-            float src_x = u * (im.width);
-            float src_y = v * (im.height);
+            
+            float4 src_x = u * (im_width);
+            float4 src_y = v * (im_height);
             
             clamp(1.0f, &src_x, cast(float) (im.width-3));
             clamp(1.0f, &src_y, cast(float) (im.height-3));
             
-            int texel_x = cast(int) src_x;
-            int texel_y = cast(int) src_y;
+            int4 texel_x = to_int4(src_x);
+            int4 texel_y = to_int4(src_y);
             
-            float tx = src_x - texel_x;
-            float ty = src_y - texel_y;
+            float4 tx = src_x - truncate(src_x);
+            float4 ty = src_y - truncate(src_y);
             
-            v4 texel00 = im.get_pixel(texel_x - 1, texel_y - 1).rgba_to_v4;
-            v4 texel10 = im.get_pixel(texel_x + 0, texel_y - 1).rgba_to_v4;
-            v4 texel20 = im.get_pixel(texel_x + 1, texel_y - 1).rgba_to_v4;
-            v4 texel30 = im.get_pixel(texel_x + 2, texel_y - 1).rgba_to_v4;
+            v4_lane texel00 = im.get_pixel4(texel_x - one, texel_y - one).rgba4_to_v4_lane;
+            v4_lane texel10 = im.get_pixel4(texel_x, texel_y - one).rgba4_to_v4_lane;
+            v4_lane texel20 = im.get_pixel4(texel_x + one, texel_y - one).rgba4_to_v4_lane;
+            v4_lane texel30 = im.get_pixel4(texel_x + two, texel_y - one).rgba4_to_v4_lane;
             
-            v4 texel01 = im.get_pixel(texel_x - 1, texel_y + 0).rgba_to_v4;
-            v4 texel11 = im.get_pixel(texel_x + 0, texel_y + 0).rgba_to_v4;
-            v4 texel21 = im.get_pixel(texel_x + 1, texel_y + 0).rgba_to_v4;
-            v4 texel31 = im.get_pixel(texel_x + 2, texel_y + 0).rgba_to_v4;
+            v4_lane texel01 = im.get_pixel4(texel_x - one, texel_y).rgba4_to_v4_lane;
+            v4_lane texel11 = im.get_pixel4(texel_x, texel_y).rgba4_to_v4_lane;
+            v4_lane texel21 = im.get_pixel4(texel_x + one, texel_y).rgba4_to_v4_lane;
+            v4_lane texel31 = im.get_pixel4(texel_x + two, texel_y).rgba4_to_v4_lane;
             
-            v4 texel02 = im.get_pixel(texel_x - 1, texel_y + 1).rgba_to_v4;
-            v4 texel12 = im.get_pixel(texel_x + 0, texel_y + 1).rgba_to_v4;
-            v4 texel22 = im.get_pixel(texel_x + 1, texel_y + 1).rgba_to_v4;
-            v4 texel32 = im.get_pixel(texel_x + 2, texel_y + 1).rgba_to_v4;
+            v4_lane texel02 = im.get_pixel4(texel_x - one, texel_y + one).rgba4_to_v4_lane;
+            v4_lane texel12 = im.get_pixel4(texel_x, texel_y + one).rgba4_to_v4_lane;
+            v4_lane texel22 = im.get_pixel4(texel_x + one, texel_y + one).rgba4_to_v4_lane;
+            v4_lane texel32 = im.get_pixel4(texel_x + two, texel_y + one).rgba4_to_v4_lane;
             
-            v4 texel03 = im.get_pixel(texel_x - 1, texel_y + 2).rgba_to_v4;
-            v4 texel13 = im.get_pixel(texel_x + 0, texel_y + 2).rgba_to_v4;
-            v4 texel23 = im.get_pixel(texel_x + 1, texel_y + 2).rgba_to_v4;
-            v4 texel33 = im.get_pixel(texel_x + 2, texel_y + 2).rgba_to_v4;
+            v4_lane texel03 = im.get_pixel4(texel_x - one, texel_y + two).rgba4_to_v4_lane;
+            v4_lane texel13 = im.get_pixel4(texel_x, texel_y + two).rgba4_to_v4_lane;
+            v4_lane texel23 = im.get_pixel4(texel_x + one, texel_y + two).rgba4_to_v4_lane;
+            v4_lane texel33 = im.get_pixel4(texel_x + two, texel_y + two).rgba4_to_v4_lane;
             
-            v4 texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
-            v4 texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
-            v4 texel2x = cubic_hermite(texel02, texel12, texel22, texel32, tx);
-            v4 texel3x = cubic_hermite(texel03, texel13, texel23, texel33, tx);
+            v4_lane texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
+            v4_lane texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
+            v4_lane texel2x = cubic_hermite(texel02, texel12, texel22, texel32, tx);
+            v4_lane texel3x = cubic_hermite(texel03, texel13, texel23, texel33, tx);
             
-            v4 output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
+            v4_lane output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
             
             clamp(0.0f, &output, 255.0f);
             
-            int lerp_index = blend_y*row_count + blend_x;
-            auto output_pixel = v4_to_rgba(lerp(output, blend, lerp_lut[lerp_index]));
+            v4_lane big_image_blend;
+            int index;
+            static foreach(i; 0..4) {
+                index = blend_y.array[i]*row_count + blend_x.array[i];
+                big_image_blend.r.array[i] = lerp_lut[index].r;
+                big_image_blend.g.array[i] = lerp_lut[index].g;
+                big_image_blend.b.array[i] = lerp_lut[index].b;
+                big_image_blend.a.array[i] = lerp_lut[index].a;
+            }
             
-            *dest++ = output_pixel;
+            auto output_pixel4 = v4_lane_to_rgba4(lerp(output, blend, big_image_blend));
+            
+            storeUnaligned(cast(uint4 *)dest, output_pixel4);
+            
+            dest += advance;
+            x += advance;
+            advance = 4;
         }
     }
     
@@ -196,6 +263,8 @@ int main(string[] args) {
     writeln("in: ", input); stdout.flush;
     
     image mosaic = make_mosaic(im, cmd.scale, cmd.count, cmd.blend, cmd.flip);
+    
+    writeln("finished. writing out image..."); stdout.flush;
     
     mosaic.write_out_image(output, cmd.jpg_quality);
     writeln("out: ", output);

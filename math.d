@@ -24,3 +24,20 @@ T clamp(T)(T min, T x, T max) {
 T clamp(T)(T min, T *x, T max) {
     return *x = clamp_upper(clamp_lower(*x, min), max);
 }
+
+import core.simd;
+import vector_math;
+
+float4 clamp(float min, float4 *f, float max) {
+    // TODO: simd?
+    foreach (ref it; f.array) it = clamp(min, it, max);
+    return *f;
+}
+
+v4_lane clamp(float min, v4_lane *v, float max) {
+    clamp(min, &v.r, max);
+    clamp(min, &v.g, max);
+    clamp(min, &v.b, max);
+    clamp(min, &v.a, max);
+    return *v;
+}

@@ -1,11 +1,13 @@
 
 import vector_math;
 
+// TODO: remove lrint
+
 pragma(inline) uint v4_to_rgba(v4 v) {
     import std.math : lrint;
     
     uint result = 0;
-    result |= (lrint(v.r));
+    result |= (lrint(v.r) << 0);
     result |= (lrint(v.g) << 8);
     result |= (lrint(v.b) << 16);
     result |= (lrint(v.a) << 24);
@@ -14,10 +16,34 @@ pragma(inline) uint v4_to_rgba(v4 v) {
 
 pragma(inline) v4 rgba_to_v4(uint u) {
     v4 result;
-    result.r = cast(ubyte) (u);
+    result.r = cast(ubyte) (u >> 0);
     result.g = cast(ubyte) (u >> 8);
     result.b = cast(ubyte) (u >> 16);
     result.a = cast(ubyte) (u >> 24);
+    return result;
+}
+
+pragma(inline) uint4 v4_lane_to_rgba4(v4_lane v) {
+    import std.math : lrint;
+    
+    uint4 result;
+    static foreach(i; 0..4) {
+        result.array[i] |= cast(int)(v.r.array[i] + 0.5f) << 0;
+        result.array[i] |= cast(int)(v.g.array[i] + 0.5f) << 8;
+        result.array[i] |= cast(int)(v.b.array[i] + 0.5f) << 16;
+        result.array[i] |= cast(int)(v.a.array[i] + 0.5f) << 24;
+    }
+    return result;
+}
+
+pragma(inline) v4_lane rgba4_to_v4_lane(uint4 u) {
+    v4_lane result;
+    static foreach(i; 0..4) {
+        result.r.array[i] = cast(ubyte) (u.array[i] >> 0);
+        result.g.array[i] = cast(ubyte) (u.array[i] >> 8);
+        result.b.array[i] = cast(ubyte) (u.array[i] >> 16);
+        result.a.array[i] = cast(ubyte) (u.array[i] >> 24);
+    }
     return result;
 }
 
@@ -41,6 +67,16 @@ image image_init(int width, int height) {
 pragma(inline) uint get_pixel(image im, int x, int y) {
     assert(x >= 0 && x < im.width && y >= 0 && y < im.height);
     return *(im.pixels + im.width*y + x);
+}
+
+import core.simd;
+
+pragma(inline) uint4 get_pixel4(image im, int4 x, int4 y) {
+    // TODO: simd?
+    uint4 result;
+    static foreach(i; 0..4)
+        result.array[i] = *(im.pixels + im.width*y.array[i] + x.array[i]);
+    return result;
 }
 
 extern (C) ubyte *stbi_load(const char *filename, int *w, int *h, int *channels_in_file, int desired_channels);
