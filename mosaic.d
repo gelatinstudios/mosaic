@@ -108,7 +108,13 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
     int4 one = 1;
     int4 two = 2;
     
-    float4 f_one = 1.0f;
+    float4 f_zero  = 0.0f;
+    float4 f_one   = 1.0f;
+    float4 f_three = 3.0f;
+    float4 f_255 = 255.0f;
+    
+    float4 max_width  = im_width - f_three;
+    float4 max_height = im_height - f_three;
     
     float4 offsets = [0, 1, 2, 3];
     
@@ -148,8 +154,8 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
             float4 src_x = u * (im_width);
             float4 src_y = v * (im_height);
             
-            clamp(1.0f, &src_x, cast(float) (im.width-3));
-            clamp(1.0f, &src_y, cast(float) (im.height-3));
+            clamp(f_one, &src_x, max_width);
+            clamp(f_one, &src_y, max_height);
             
             int4 texel_x = to_int4(src_x);
             int4 texel_y = to_int4(src_y);
@@ -194,7 +200,7 @@ image make_mosaic(image im, float scale, int row_count, float blend, bool flip) 
             
             v4_lane output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
             
-            clamp(0.0f, &output, 255.0f);
+            clamp(f_zero, &output, f_255);
             
             v4_lane big_image_blend;
             int index;
