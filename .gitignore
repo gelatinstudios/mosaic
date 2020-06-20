@@ -1,3 +1,4 @@
+cloc_blacklist.txt
 *.obj
 *.h
 *.jpg
@@ -6,4 +7,3 @@
 .vs*
 *.pdb
 *.ilk
-cloc_blacklist.txt

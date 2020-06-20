@@ -1,16 +1,12 @@
 
 import vector_math;
 
-// TODO: remove lrint
-
 pragma(inline) uint v4_to_rgba(v4 v) {
-    import std.math : lrint;
-    
     uint result = 0;
-    result |= (lrint(v.r) << 0);
-    result |= (lrint(v.g) << 8);
-    result |= (lrint(v.b) << 16);
-    result |= (lrint(v.a) << 24);
+    result |= (cast(int)(v.r + 0.5f) << 0);
+    result |= (cast(int)(v.g + 0.5f) << 8);
+    result |= (cast(int)(v.b + 0.5f) << 16);
+    result |= (cast(int)(v.a + 0.5f) << 24);
     return result;
 }
 

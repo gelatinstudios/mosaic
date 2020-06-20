@@ -305,7 +305,7 @@ int main(string[] args) {
     
     double elapsed = (end - start).total!"msecs" / 1000.0;
     writeln("total time = ", elapsed, " s");
-    writeln("average inner loop time = ", mean(timings), " ns from ", timings.length, " iterations");
+    writeln("average inner loop time = ", mean(timings), " ns with ", timings.length, " iterations");
     writeln("finished. writing out image..."); stdout.flush;
     
     mosaic.write_out_image(output, cmd.jpg_quality);
