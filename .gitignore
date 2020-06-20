@@ -6,3 +6,4 @@
 .vs*
 *.pdb
 *.ilk
+cloc_blacklist.txt

@@ -11,8 +11,9 @@ void writeln_var(alias var)() {
     writeln(__traits(identifier, var), " = ", var);
 }
 
+double[] timings;
+
 image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) {
-    import std.math : trunc;
     import core.simd;
     
     int width  = cast(int) (im.width*scale);
@@ -22,7 +23,7 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
     
     int tile_count = square(row_count);
     
-    float s_tile_width = cast(float)width / row_count;
+    float s_tile_width  = cast(float)width / row_count;
     float s_tile_height = cast(float)height / row_count;
     
     float4 tile_width  = s_tile_width;
@@ -58,7 +59,7 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
         }
     }
     
-    v4_lane cubic_hermite(ref v4_lane A, ref v4_lane B, ref v4_lane C, ref v4_lane D, ref float4 t) {
+    v4_lane cubic_hermite(ref v4_lane A, ref v4_lane B, ref v4_lane C, ref v4_lane D, float4 t) {
         // NOTE: https://www.shadertoy.com/view/MllSzX
         float4 one_half = 0.5f;
         float4 two      = 2.0f;
@@ -122,9 +123,13 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
     
     auto init_advance = width % 4;
     uint *dest = result.pixels;
+    
+    import core.time;
+    
     foreach (y; 0..height) {
         auto advance = init_advance;
         for (auto x = 0; x < width; ) {
+            auto start = MonoTime.currTime;
             int4 x4i = x;
             int4 y4i = y;
             
@@ -222,6 +227,9 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
             dest += advance;
             x += advance;
             advance = 4;
+            
+            auto end = MonoTime.currTime;
+            timings ~= (end - start).total!"nsecs";
         }
     }
     
@@ -242,6 +250,7 @@ extern extern (C) int stbi_write_png_compression_level;
 
 int main(string[] args) {
     import std.path : extension;
+    import std.algorithm : mean;
     import core.time;
     import jt_cmd;
     
@@ -295,7 +304,8 @@ int main(string[] args) {
     auto end = MonoTime.currTime;
     
     double elapsed = (end - start).total!"msecs" / 1000.0;
-    writeln(elapsed, " s");
+    writeln("total time = ", elapsed, " s");
+    writeln("average inner loop time = ", mean(timings), " ns from ", timings.length, " iterations");
     writeln("finished. writing out image..."); stdout.flush;
     
     mosaic.write_out_image(output, cmd.jpg_quality);

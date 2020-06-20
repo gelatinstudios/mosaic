@@ -23,11 +23,9 @@ pragma(inline) v4 rgba_to_v4(uint u) {
     return result;
 }
 
-pragma(inline) uint4 v4_lane_to_rgba4(v4_lane v) {
-    import std.math : lrint;
-    
+uint4 v4_lane_to_rgba4(v4_lane v) {
     uint4 result;
-    static foreach(i; 0..4) {
+    foreach(i; 0..4) {
         result.array[i] |= cast(int)(v.r.array[i] + 0.5f) << 0;
         result.array[i] |= cast(int)(v.g.array[i] + 0.5f) << 8;
         result.array[i] |= cast(int)(v.b.array[i] + 0.5f) << 16;
@@ -36,9 +34,9 @@ pragma(inline) uint4 v4_lane_to_rgba4(v4_lane v) {
     return result;
 }
 
-pragma(inline) v4_lane rgba4_to_v4_lane(uint4 u) {
+v4_lane rgba4_to_v4_lane(uint4 u) {
     v4_lane result;
-    static foreach(i; 0..4) {
+    foreach(i; 0..4) {
         result.r.array[i] = cast(ubyte) (u.array[i] >> 0);
         result.g.array[i] = cast(ubyte) (u.array[i] >> 8);
         result.b.array[i] = cast(ubyte) (u.array[i] >> 16);
