@@ -129,7 +129,6 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
     foreach (y; 0..height) {
         auto advance = init_advance;
         for (auto x = 0; x < width; ) {
-            auto start = MonoTime.currTime;
             int4 x4i = x;
             int4 y4i = y;
             
@@ -227,9 +226,6 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
             dest += advance;
             x += advance;
             advance = 4;
-            
-            auto end = MonoTime.currTime;
-            timings ~= (end - start).total!"nsecs";
         }
     }
     
@@ -304,8 +300,7 @@ int main(string[] args) {
     auto end = MonoTime.currTime;
     
     double elapsed = (end - start).total!"msecs" / 1000.0;
-    writeln("total time = ", elapsed, " s");
-    writeln("average inner loop time = ", mean(timings), " ns with ", timings.length, " iterations");
+    writeln(elapsed, " s");
     writeln("finished. writing out image..."); stdout.flush;
     
     mosaic.write_out_image(output, cmd.jpg_quality);
