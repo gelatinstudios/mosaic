@@ -32,7 +32,10 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
     float traversal_width  = s_tile_width/scale;
     float traversal_height = s_tile_height/scale;
     
-    int pixel_count = cast(int)traversal_width * cast(int)traversal_height;
+    int itraversal_width  = cast(int) traversal_width;
+    int itraversal_height = cast(int) traversal_height;
+    
+    int pixel_count = itraversal_width * itraversal_height;
     
     v4[] lerp_lut;
     lerp_lut.length = tile_count;
@@ -41,8 +44,8 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
         foreach (ix; 0..row_count) {
             int start_x = cast(int) (ix*traversal_width);
             int start_y = cast(int) (iy*traversal_height);
-            int end_x = start_x + cast(int) (traversal_width);
-            int end_y = start_y + cast(int) (traversal_height);
+            int end_x = start_x + itraversal_width;
+            int end_y = start_y + itraversal_height;
             
             //end_x = clamp_upper(end_x, im.width);
             //end_y = clamp_upper(end_y, im.height);
