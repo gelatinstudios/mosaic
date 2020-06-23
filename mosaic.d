@@ -11,10 +11,19 @@ void writeln_var(alias var)() {
     writeln(__traits(identifier, var), " = ", var);
 }
 
-double[] timings;
-
 image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) {
     import core.simd;
+    import std.algorithm : min;
+    
+    if (row_count > im.width || row_count > im.height) {
+        writeln("count too big.\nexpected: < ", min(im.width, im.height), "\n given: ", row_count);
+        exit(EXIT_FAILURE);
+    }
+    
+    if (im.width <= 4) {
+        writeln("error. image width must be > 4 pixels. given: ", im.width, " pixels");
+        exit(EXIT_FAILURE);
+    }
     
     int width  = cast(int) (im.width*scale);
     int height = cast(int) (im.height*scale);
@@ -29,36 +38,74 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
     float4 tile_width  = s_tile_width;
     float4 tile_height = s_tile_height;
     
-    float traversal_width  = s_tile_width/scale;
-    float traversal_height = s_tile_height/scale;
-    
-    int itraversal_width  = cast(int) traversal_width;
-    int itraversal_height = cast(int) traversal_height;
-    
-    int pixel_count = itraversal_width * itraversal_height;
-    
     v4[] lerp_lut;
     lerp_lut.length = tile_count;
-    int lerp_lut_index = 0;
-    foreach (iy; 0..row_count) {
-        foreach (ix; 0..row_count) {
-            int start_x = cast(int) (ix*traversal_width);
-            int start_y = cast(int) (iy*traversal_height);
-            int end_x = start_x + itraversal_width;
-            int end_y = start_y + itraversal_height;
-            
-            //end_x = clamp_upper(end_x, im.width);
-            //end_y = clamp_upper(end_y, im.height);
-            
-            v4 acc = v4(0, 0, 0, 0);
-            float contrib = 1.0f/pixel_count;
-            foreach(y; start_y..end_y) {
-                foreach (x; start_x..end_x) {
-                    acc += im.get_pixel(x, y).rgba_to_v4*contrib;
+    {
+        float traversal_width  = s_tile_width/scale;
+        float traversal_height = s_tile_height/scale;
+        
+        int itraversal_width  = cast(int) traversal_width;
+        int itraversal_height = cast(int) traversal_height;
+        
+        int pixel_count = itraversal_width * itraversal_height;
+        float contrib = 4.0f/pixel_count;
+        
+        int init_advance = itraversal_width % 4;
+        
+        int4 all_ones = 0xffffffff;
+        
+        int4 acc_mask;
+        foreach(i; 0..init_advance) acc_mask.array[i] = 0xffffffff;
+        
+        float4 and_ps(int4 a, float4 b) {
+            return simd!(XMM.ANDPS)(a, b);
+        }
+        
+        int lerp_lut_index = 0;
+        foreach (iy; 0..row_count) {
+            foreach (ix; 0..row_count) {
+                int start_x = cast(int) (ix*traversal_width);
+                int start_y = cast(int) (iy*traversal_height);
+                int end_x = start_x + itraversal_width;
+                int end_y = start_y + itraversal_height;
+                
+                uint *row = im.pixels + im.width*start_y;
+                
+                v4_lane acc = v4_lane(0, 0, 0, 0);
+                foreach(y; start_y..end_y) {
+                    uint *pixel = row + start_x;
+                    int advance = init_advance;
+                    int4 mask = acc_mask;
+                    for (int x = start_x; x < end_x; ) {
+                        uint *p = pixel;
+                        uint4 pixel4;
+                        static foreach(i; 0..4) pixel4.array[i] = *p++;
+                        v4_lane pixels = rgba4_to_v4_lane(pixel4);
+                        pixels *= contrib;
+                        
+                        acc.r += and_ps(mask, pixels.r);
+                        acc.g += and_ps(mask, pixels.g);
+                        acc.b += and_ps(mask, pixels.b);
+                        acc.a += and_ps(mask, pixels.a);
+                        
+                        x += advance;
+                        pixel += advance;
+                        advance = 4;
+                        mask = all_ones;
+                    }
+                    row += im.width;
                 }
+                
+                v4 final_blend = v4(0, 0, 0, 0);
+                static foreach (i; 0..4) {
+                    final_blend.r += acc.r.array[i]*0.25f;
+                    final_blend.g += acc.g.array[i]*0.25f;
+                    final_blend.b += acc.b.array[i]*0.25f;
+                    final_blend.a += acc.a.array[i]*0.25f;
+                }
+                
+                lerp_lut[lerp_lut_index++] = final_blend;
             }
-            
-            lerp_lut[lerp_lut_index++] = acc;
         }
     }
     
