@@ -150,11 +150,8 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
         return simd!(XMM.CVTPS2DQ)(f);
     }
     
-    int4 imwidth  = im.width;
-    int4 imheight = im.height;
-    
-    float4 im_width  = to_float4(imwidth);
-    float4 im_height = to_float4(imheight);
+    float4 im_width  = cast(float) im.width;
+    float4 im_height = cast(float) im.height;
     
     int4 one = 1;
     int4 two = 2;
@@ -341,7 +338,8 @@ int main(string[] args) {
         return EXIT_FAILURE;
     }
     
-    writeln("in: ", input); stdout.flush;
+    writeln("in: ", input);
+    stdout.flush;
     
     auto start = MonoTime.currTime;
     image mosaic;
@@ -351,7 +349,8 @@ int main(string[] args) {
     
     double elapsed = (end - start).total!"msecs" / 1000.0;
     writeln(elapsed, " s");
-    writeln("finished. writing out image..."); stdout.flush;
+    writeln("finished. writing out image...");
+    stdout.flush;
     
     mosaic.write_out_image(output, cmd.jpg_quality);
     writeln("out: ", output);
