@@ -176,11 +176,8 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
     foreach (y; 0..height) {
         auto advance = init_advance;
         for (auto x = 0; x < width; ) {
-            int4 x4i = x;
-            int4 y4i = y;
-            
-            float4 x4 = to_float4(x4i);
-            float4 y4 = to_float4(y4i);
+            float4 x4 = cast(float)x;
+            float4 y4 = cast(float)y;
             x4 += offsets;
             
             float4 u = x4 / tile_width;
