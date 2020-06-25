@@ -41,14 +41,28 @@ struct int8 {
     int8(s32 i) { v = _mm256_set1_epi32(i); }
     int8(u32 i) { v = _mm256_set1_epi32(i); }
     
+    int8 operator >> (int shift) { return int8(_mm256_srli_epi32(v, shift)); }
+    int8 operator << (int shift) { return int8(_mm256_slli_epi32(v, shift)); }
+    
     float8 operator & (float8 f) { return float8(_mm256_and_ps(*(__m256 *)&v, f.v)); }
+    int8 operator & (int8 i) { return int8(_mm256_and_si256(v, i.v)); }
+    
+    int8 operator | (int8 i) {return int8(_mm256_or_si256(v, i.v)); }
     
     int8 operator + (int8 f) { return int8(_mm256_add_epi32(v, f.v)); }
     int8 operator - (int8 f) { return int8(_mm256_sub_epi32(v, f.v)); }
+    int8 operator * (int8 f) { return int8(_mm256_mullo_epi32(v, f.v)); }
+    
+    int8 operator *= (int8 f) { return *this = *this * f; }
+    int8 operator |= (int8 f) { return *this = *this | f; }
 };
 
 static int8 to_int8(float8 f) {
     return int8(_mm256_cvtps_epi32(f.v));
+}
+
+static float8 to_float8(int8 f) {
+    return float8(_mm256_cvtepi32_ps(f.v));
 }
 
 static float8 floor(float8 f) {
@@ -75,7 +89,7 @@ struct v4_lane {
     v4_lane operator - () {
         return { -x, -y, -z, -w };
     }
-    v4_lane operator + (v4_lane v) {
+    v4_lane operator + (v4_lane &v) {
         return {
             v.x + x,
             v.y + y,
@@ -83,7 +97,7 @@ struct v4_lane {
             v.w + w,
         };
     }
-    v4_lane operator - (v4_lane v) {
+    v4_lane operator - (v4_lane &v) {
         return {
             x - v.x,
             y - v.y,
@@ -104,24 +118,22 @@ v4_lane operator * (float8 f, v4_lane v) {
 }
 
 static v4_lane rgba8_to_v4_lane(int8 p) {
+    int8 mask = 0xff;
     v4_lane result = {};
-    for (int i = 0; i < 8; ++i) {
-        result.r.array[i] = (p.array[i] >> 0)  & 0xff;
-        result.g.array[i] = (p.array[i] >> 8)  & 0xff;
-        result.b.array[i] = (p.array[i] >> 16) & 0xff;
-        result.a.array[i] = (p.array[i] >> 24) & 0xff;
-    }
+    result.r = to_float8((p >> 0)  & mask);
+    result.g = to_float8((p >> 8)  & mask);
+    result.b = to_float8((p >> 16) & mask);
+    result.a = to_float8((p >> 24) & mask);
     return result;
 }
 
 static int8 v4_lane_to_rgba8(v4_lane &v) {
+    float8 one_half = 0.5f;
     int8 result = {};
-    for (int i = 0; i < 8; ++i) {
-        result.array[i] |= (u8)(v.r.array[i] + 0.5f) << 0;
-        result.array[i] |= (u8)(v.g.array[i] + 0.5f) << 8;
-        result.array[i] |= (u8)(v.b.array[i] + 0.5f) << 16;
-        result.array[i] |= (u8)(v.a.array[i] + 0.5f) << 24;
-    }
+    result |= to_int8(v.r + one_half) << 0;
+    result |= to_int8(v.g + one_half) << 8;
+    result |= to_int8(v.b + one_half) << 16;
+    result |= to_int8(v.a + one_half) << 24;
     return result;
 }
 
@@ -135,10 +147,10 @@ struct image {
     }
     
     int8 get_pixel8(int8 x, int8 y) {
+        int8 imwidth = width;
+        int8 indices = imwidth*y + x;
         int8 result = {};
-        for (int i = 0; i < 8; ++i) {
-            result.array[i] = get_pixel(x.array[i], y.array[i]);
-        }
+        result.v = _mm256_i32gather_epi32((int *)pixels, indices.v, sizeof(u32));
         return result;
     }
 };

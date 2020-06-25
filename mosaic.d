@@ -155,8 +155,6 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
     
     float4 offsets = [0, 1, 2, 3];
     
-    int4 row_count4 = row_count;
-    
     auto init_advance = width % 4;
     uint *dest = result.pixels;
     
@@ -330,7 +328,7 @@ int main(string[] args) {
     writeln("in: ", input);
     stdout.flush;
     
-    if (cmd.count > im.width || cmd.count > im.height) {
+    if (cmd.count >= im.width || cmd.count >= im.height) {
         writeln("error\ncount too big.\nexpected: < ", min(im.width, im.height), "\ngiven: ", cmd.count);
         exit(EXIT_FAILURE);
     }

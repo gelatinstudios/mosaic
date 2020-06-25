@@ -2,14 +2,13 @@
 // NOTE: D doesn't have good support for avx2,
 //       so i'm writing this in C++
 
-// TODO: use vpgatherdd for some indexing things
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <fenv.h>
 
 #include <algorithm>
 
+#include "jt_defer.h"
 #include "mosaic_avx.h"
 
 static v4_lane cubic_hermite(v4_lane &A, v4_lane &B, v4_lane &C, v4_lane &D, float8 t) {
@@ -51,7 +50,8 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
     float8 tile_width  = s_tile_width;
     float8 tile_height = s_tile_height;
     
-    v4 *lerp_lut = (v4 *)alloca(tile_count*sizeof(v4));
+    v4 *lerp_lut = (v4 *)malloc(tile_count*sizeof(v4));
+    Defer(free(lerp_lut));
     {
         float traversal_width  = s_tile_width/scale;
         float traversal_height = s_tile_height/scale;
@@ -121,8 +121,10 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
     float8 im_width  = (float) im.width;
     float8 im_height = (float) im.height;
     
-    int8 one = 1;
-    int8 two = 2;
+    int8 one   = 1;
+    int8 two   = 2;
+    int8 three = 3;
+    int8 four  = 4;
     
     float8 f_zero  = 0.0f;
     float8 f_one   = 1.0f;
@@ -134,7 +136,7 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
     
     float8 offsets(0, 1, 2, 3, 4, 5, 6, 7);
     
-    int8 row_count4 = row_count;
+    int8 row_count8 = row_count;
     
     auto init_advance = width % 8;
     u32 *dest = result.pixels;
@@ -220,13 +222,16 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
                 clamp(f_zero, &output.a, f_255);
                 
                 v4_lane big_image_blend = {};
-                for (int i = 0; i < 8; ++i) {
-                    int index = blend_y.array[i]*row_count + blend_x.array[i];
-                    big_image_blend.r.array[i] = lerp_lut[index].r;
-                    big_image_blend.g.array[i] = lerp_lut[index].g;
-                    big_image_blend.b.array[i] = lerp_lut[index].b;
-                    big_image_blend.a.array[i] = lerp_lut[index].a;
-                }
+                
+                int8 indexr = (blend_y*row_count8 + blend_x)*four;
+                int8 indexg = indexr + one;
+                int8 indexb = indexr + two;
+                int8 indexa = indexr + three;
+                
+                big_image_blend.r.v = _mm256_i32gather_ps((float *)lerp_lut, indexr.v, sizeof(float));
+                big_image_blend.g.v = _mm256_i32gather_ps((float *)lerp_lut, indexg.v, sizeof(float));
+                big_image_blend.b.v = _mm256_i32gather_ps((float *)lerp_lut, indexb.v, sizeof(float));
+                big_image_blend.a.v = _mm256_i32gather_ps((float *)lerp_lut, indexa.v, sizeof(float));
                 
                 auto output_pixel8 = v4_lane_to_rgba8(lerp(output, blend, big_image_blend));
                 
@@ -309,13 +314,16 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
                 clamp(f_zero, &output.a, f_255);
                 
                 v4_lane big_image_blend = {};
-                for (int i = 0; i < 8; ++i) {
-                    int index = blend_y.array[i]*row_count + blend_x.array[i];
-                    big_image_blend.r.array[i] = lerp_lut[index].r;
-                    big_image_blend.g.array[i] = lerp_lut[index].g;
-                    big_image_blend.b.array[i] = lerp_lut[index].b;
-                    big_image_blend.a.array[i] = lerp_lut[index].a;
-                }
+                
+                int8 indexr = (blend_y*row_count8 + blend_x)*four;
+                int8 indexg = indexr + one;
+                int8 indexb = indexr + two;
+                int8 indexa = indexr + three;
+                
+                big_image_blend.r.v = _mm256_i32gather_ps((float *)lerp_lut, indexr.v, sizeof(float));
+                big_image_blend.g.v = _mm256_i32gather_ps((float *)lerp_lut, indexg.v, sizeof(float));
+                big_image_blend.b.v = _mm256_i32gather_ps((float *)lerp_lut, indexb.v, sizeof(float));
+                big_image_blend.a.v = _mm256_i32gather_ps((float *)lerp_lut, indexa.v, sizeof(float));
                 
                 auto output_pixel8 = v4_lane_to_rgba8(lerp(output, blend, big_image_blend));
                 
