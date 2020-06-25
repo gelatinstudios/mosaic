@@ -38,16 +38,6 @@ static v4_lane cubic_hermite(v4_lane &A, v4_lane &B, v4_lane &C, v4_lane &D, flo
 }
 
 extern image make_mosaic_avx2(image im, float scale, int row_count, float blend, bool flip) {
-    if (row_count > im.width || row_count > im.height) {
-        fprintf(stderr, "count too big.\nexpected: < %d\ngiven: %d\n", std::min(im.width, im.height), row_count);
-        exit(EXIT_FAILURE);
-    }
-    
-    if (im.width <= 8) {
-        fprintf(stderr, "error. image width must be > 8 pixels. given: %d pixels", im.width);
-        exit(EXIT_FAILURE);
-    }
-    
     s32 width  = (s32)(im.width*scale);
     s32 height = (s32)(im.height*scale);
     

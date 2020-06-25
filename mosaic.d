@@ -13,17 +13,6 @@ void writeln_var(alias var)() {
 
 image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) {
     import core.simd;
-    import std.algorithm : min;
-    
-    if (row_count > im.width || row_count > im.height) {
-        writeln("count too big.\nexpected: < ", min(im.width, im.height), "\ngiven: ", row_count);
-        exit(EXIT_FAILURE);
-    }
-    
-    if (im.width <= 4) {
-        writeln("error. image width must be > 4 pixels. given: ", im.width, " pixels");
-        exit(EXIT_FAILURE);
-    }
     
     int width  = cast(int) (im.width*scale);
     int height = cast(int) (im.height*scale);
@@ -292,7 +281,7 @@ extern extern (C++) image make_mosaic_avx2(image, float scale, int row_count, fl
 
 int main(string[] args) {
     import std.path : extension;
-    import std.algorithm : mean;
+    import std.algorithm : mean, min;
     import core.time;
     import core.cpuid : avx2;
     import jt_cmd;
@@ -341,9 +330,22 @@ int main(string[] args) {
     writeln("in: ", input);
     stdout.flush;
     
+    if (cmd.count > im.width || cmd.count > im.height) {
+        writeln("error\ncount too big.\nexpected: < ", min(im.width, im.height), "\ngiven: ", cmd.count);
+        exit(EXIT_FAILURE);
+    }
+    
+    auto using_avx2 = avx2();
+    auto min_width = using_avx2 ? 8 : 4;
+    
+    if (im.width <= min_width) {
+        writeln("error\nimage width must be > ", min_width, " pixels.\ngiven: ", im.width, " pixels");
+        exit(EXIT_FAILURE);
+    }
+    
     auto start = MonoTime.currTime;
     image mosaic;
-    if (avx2()) {
+    if (using_avx2) {
         mosaic = make_mosaic_avx2(im, cmd.scale, cmd.count, cmd.blend, cmd.flip);
     } else {
         if (cmd.flip) mosaic = make_mosaic!true(im, cmd.scale, cmd.count, cmd.blend);
