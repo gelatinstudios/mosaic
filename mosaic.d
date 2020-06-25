@@ -16,7 +16,7 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
     import std.algorithm : min;
     
     if (row_count > im.width || row_count > im.height) {
-        writeln("count too big.\nexpected: < ", min(im.width, im.height), "\n given: ", row_count);
+        writeln("count too big.\nexpected: < ", min(im.width, im.height), "\ngiven: ", row_count);
         exit(EXIT_FAILURE);
     }
     
@@ -288,10 +288,13 @@ struct cmd_options {
 
 extern extern (C) int stbi_write_png_compression_level;
 
+extern extern (C++) image make_mosaic_avx2(image, float scale, int row_count, float blend, bool flip);
+
 int main(string[] args) {
     import std.path : extension;
     import std.algorithm : mean;
     import core.time;
+    import core.cpuid : avx2;
     import jt_cmd;
     
     bool check_extension(string filename) {
@@ -340,8 +343,12 @@ int main(string[] args) {
     
     auto start = MonoTime.currTime;
     image mosaic;
-    if (cmd.flip) mosaic = make_mosaic!true(im, cmd.scale, cmd.count, cmd.blend);
-    else          mosaic = make_mosaic!false(im, cmd.scale, cmd.count, cmd.blend);
+    if (avx2()) {
+        mosaic = make_mosaic_avx2(im, cmd.scale, cmd.count, cmd.blend, cmd.flip);
+    } else {
+        if (cmd.flip) mosaic = make_mosaic!true(im, cmd.scale, cmd.count, cmd.blend);
+        else          mosaic = make_mosaic!false(im, cmd.scale, cmd.count, cmd.blend);
+    }
     auto end = MonoTime.currTime;
     
     double elapsed = (end - start).total!"msecs" / 1000.0;

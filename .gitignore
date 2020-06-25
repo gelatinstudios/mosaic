@@ -1,6 +1,5 @@
 cloc_blacklist.txt
 *.obj
-*.h
 *.jpg
 *.png
 *.exe
