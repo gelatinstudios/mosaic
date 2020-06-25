@@ -32,7 +32,7 @@ pragma(inline) float4 clamp(float4 min, float4 *f, float4 max) {
     return *f = simd!(XMM.MINPS)(max, simd!(XMM.MAXPS)(min, *f));
 }
 
-pragma(inline) v4_lane clamp(float4 min, v4_lane *v, float4 max) {
+pragma(inline) v4_4x clamp(float4 min, v4_4x *v, float4 max) {
     clamp(min, &v.r, max);
     clamp(min, &v.g, max);
     clamp(min, &v.b, max);

@@ -80,16 +80,16 @@ struct v4 {
     };
 };
 
-struct v4_lane {
+struct v4_8x {
     union {
         struct { float8 x, y, z, w; };
         struct { float8 r, g, b, a; };
     };
     
-    v4_lane operator - () {
+    v4_8x operator - () {
         return { -x, -y, -z, -w };
     }
-    v4_lane operator + (v4_lane &v) {
+    v4_8x operator + (v4_8x &v) {
         return {
             v.x + x,
             v.y + y,
@@ -97,7 +97,7 @@ struct v4_lane {
             v.w + w,
         };
     }
-    v4_lane operator - (v4_lane &v) {
+    v4_8x operator - (v4_8x &v) {
         return {
             x - v.x,
             y - v.y,
@@ -105,21 +105,21 @@ struct v4_lane {
             w - v.w,
         };
     }
-    v4_lane operator * (float8 f) {
+    v4_8x operator * (float8 f) {
         return { f*x, f*y, f*z, f*w };
     }
     
-    v4_lane operator *= (float8 f) {
+    v4_8x operator *= (float8 f) {
         return *this = *this * f;
     }
 };
-v4_lane operator * (float8 f, v4_lane v) {
+v4_8x operator * (float8 f, v4_8x v) {
     return v*f;
 }
 
-static v4_lane rgba8_to_v4_lane(int8 p) {
+static v4_8x rgba8_to_v4_8x(int8 p) {
     int8 mask = 0xff;
-    v4_lane result = {};
+    v4_8x result = {};
     result.r = to_float8((p >> 0)  & mask);
     result.g = to_float8((p >> 8)  & mask);
     result.b = to_float8((p >> 16) & mask);
@@ -127,7 +127,7 @@ static v4_lane rgba8_to_v4_lane(int8 p) {
     return result;
 }
 
-static int8 v4_lane_to_rgba8(v4_lane &v) {
+static int8 v4_8x_to_rgba8(v4_8x &v) {
     float8 one_half = 0.5f;
     int8 result = {};
     result |= to_int8(v.r + one_half) << 0;
@@ -163,7 +163,7 @@ static image image_init(s32 width, s32 height) {
     return result;
 }
 
-static v4_lane lerp(v4_lane &a, float8 t, v4_lane &b) {
+static v4_8x lerp(v4_8x &a, float8 t, v4_8x &b) {
     return (float8(1.0f) - t)*a + t*b;
 }
 

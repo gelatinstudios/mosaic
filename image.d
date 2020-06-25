@@ -20,7 +20,7 @@ pragma(inline) v4 rgba_to_v4(uint u) {
     return result;
 }
 
-uint4 v4_lane_to_rgba4(v4_lane v) {
+uint4 v4_4x_to_rgba4(v4_4x v) {
     uint4 result;
     float4 one_half = 0.5f;
     result |=                     (to_uint4(v.r + one_half));
@@ -30,9 +30,9 @@ uint4 v4_lane_to_rgba4(v4_lane v) {
     return result;
 }
 
-v4_lane rgba4_to_v4_lane(uint4 u) {
+v4_4x rgba4_to_v4_4x(uint4 u) {
     uint4 mask = 0xff;
-    v4_lane result;
+    v4_4x result;
     result.r = to_float4(                    (u) & mask);
     result.g = to_float4(simd!(XMM.PSRLD, 8) (u) & mask);
     result.b = to_float4(simd!(XMM.PSRLD, 16)(u) & mask);

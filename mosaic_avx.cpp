@@ -11,7 +11,7 @@
 #include "jt_defer.h"
 #include "mosaic_avx.h"
 
-static v4_lane cubic_hermite(v4_lane &A, v4_lane &B, v4_lane &C, v4_lane &D, float8 t) {
+static v4_8x cubic_hermite(v4_8x &A, v4_8x &B, v4_8x &C, v4_8x &D, float8 t) {
     // NOTE: https://www.shadertoy.com/view/MllSzX
     float8 one_half = 0.5f;
     float8 two      = 2.0f;
@@ -21,17 +21,17 @@ static v4_lane cubic_hermite(v4_lane &A, v4_lane &B, v4_lane &C, v4_lane &D, flo
     float8 t2 = t*t;
     float8 t3 = t*t2;
     
-    v4_lane half_A = A*one_half;
-    v4_lane half_B = B*one_half;
-    v4_lane half_C = C*one_half;
-    v4_lane half_D = D*one_half;
+    v4_8x half_A = A*one_half;
+    v4_8x half_B = B*one_half;
+    v4_8x half_C = C*one_half;
+    v4_8x half_D = D*one_half;
     
-    v4_lane neg_half_A = -half_A;
+    v4_8x neg_half_A = -half_A;
     
-    v4_lane a = neg_half_A + three*half_B - three*half_C + half_D;
-    v4_lane b = A - five*half_B + two*C - half_D;
-    v4_lane c = neg_half_A + half_C;
-    v4_lane d = B;
+    v4_8x a = neg_half_A + three*half_B - three*half_C + half_D;
+    v4_8x b = A - five*half_B + two*C - half_D;
+    v4_8x c = neg_half_A + half_C;
+    v4_8x d = B;
     
     return a*t3 + b*t2 + c*t + d;
 }
@@ -79,7 +79,7 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
                 
                 u32 *row = im.pixels + im.width*start_y;
                 
-                v4_lane acc = {};
+                v4_8x acc = {};
                 for (int y = start_y; y < end_y; ++y) {
                     u32 *pixel = row + start_x;
                     int advance = init_advance;
@@ -89,7 +89,7 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
                         int8 pixel8;
                         for (int i = 0; i < 8; ++i)
                             pixel8.array[i] = *p++;
-                        v4_lane pixels = rgba8_to_v4_lane(pixel8);
+                        v4_8x pixels = rgba8_to_v4_8x(pixel8);
                         pixels *= contrib;
                         
                         acc.r += mask & pixels.r;
@@ -189,39 +189,39 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
                 int8 y2 = texel_y + one;
                 int8 y3 = texel_y + two;
                 
-                v4_lane texel00 = rgba8_to_v4_lane(im.get_pixel8(x0, y0));
-                v4_lane texel10 = rgba8_to_v4_lane(im.get_pixel8(x1, y0));
-                v4_lane texel20 = rgba8_to_v4_lane(im.get_pixel8(x2, y0));
-                v4_lane texel30 = rgba8_to_v4_lane(im.get_pixel8(x3, y0));
+                v4_8x texel00 = rgba8_to_v4_8x(im.get_pixel8(x0, y0));
+                v4_8x texel10 = rgba8_to_v4_8x(im.get_pixel8(x1, y0));
+                v4_8x texel20 = rgba8_to_v4_8x(im.get_pixel8(x2, y0));
+                v4_8x texel30 = rgba8_to_v4_8x(im.get_pixel8(x3, y0));
                 
-                v4_lane texel01 = rgba8_to_v4_lane(im.get_pixel8(x0, y1));
-                v4_lane texel11 = rgba8_to_v4_lane(im.get_pixel8(x1, y1));
-                v4_lane texel21 = rgba8_to_v4_lane(im.get_pixel8(x2, y1));
-                v4_lane texel31 = rgba8_to_v4_lane(im.get_pixel8(x3, y1));
+                v4_8x texel01 = rgba8_to_v4_8x(im.get_pixel8(x0, y1));
+                v4_8x texel11 = rgba8_to_v4_8x(im.get_pixel8(x1, y1));
+                v4_8x texel21 = rgba8_to_v4_8x(im.get_pixel8(x2, y1));
+                v4_8x texel31 = rgba8_to_v4_8x(im.get_pixel8(x3, y1));
                 
-                v4_lane texel02 = rgba8_to_v4_lane(im.get_pixel8(x0, y2));
-                v4_lane texel12 = rgba8_to_v4_lane(im.get_pixel8(x1, y2));
-                v4_lane texel22 = rgba8_to_v4_lane(im.get_pixel8(x2, y2));
-                v4_lane texel32 = rgba8_to_v4_lane(im.get_pixel8(x3, y2));
+                v4_8x texel02 = rgba8_to_v4_8x(im.get_pixel8(x0, y2));
+                v4_8x texel12 = rgba8_to_v4_8x(im.get_pixel8(x1, y2));
+                v4_8x texel22 = rgba8_to_v4_8x(im.get_pixel8(x2, y2));
+                v4_8x texel32 = rgba8_to_v4_8x(im.get_pixel8(x3, y2));
                 
-                v4_lane texel03 = rgba8_to_v4_lane(im.get_pixel8(x0, y3));
-                v4_lane texel13 = rgba8_to_v4_lane(im.get_pixel8(x1, y3));
-                v4_lane texel23 = rgba8_to_v4_lane(im.get_pixel8(x2, y3));
-                v4_lane texel33 = rgba8_to_v4_lane(im.get_pixel8(x3, y3));
+                v4_8x texel03 = rgba8_to_v4_8x(im.get_pixel8(x0, y3));
+                v4_8x texel13 = rgba8_to_v4_8x(im.get_pixel8(x1, y3));
+                v4_8x texel23 = rgba8_to_v4_8x(im.get_pixel8(x2, y3));
+                v4_8x texel33 = rgba8_to_v4_8x(im.get_pixel8(x3, y3));
                 
-                v4_lane texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
-                v4_lane texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
-                v4_lane texel2x = cubic_hermite(texel02, texel12, texel22, texel32, tx);
-                v4_lane texel3x = cubic_hermite(texel03, texel13, texel23, texel33, tx);
+                v4_8x texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
+                v4_8x texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
+                v4_8x texel2x = cubic_hermite(texel02, texel12, texel22, texel32, tx);
+                v4_8x texel3x = cubic_hermite(texel03, texel13, texel23, texel33, tx);
                 
-                v4_lane output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
+                v4_8x output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
                 
                 clamp(f_zero, &output.r, f_255);
                 clamp(f_zero, &output.g, f_255);
                 clamp(f_zero, &output.b, f_255);
                 clamp(f_zero, &output.a, f_255);
                 
-                v4_lane big_image_blend = {};
+                v4_8x big_image_blend = {};
                 
                 int8 indexr = (blend_y*row_count8 + blend_x)*four;
                 int8 indexg = indexr + one;
@@ -233,7 +233,7 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
                 big_image_blend.b.v = _mm256_i32gather_ps((float *)lerp_lut, indexb.v, sizeof(float));
                 big_image_blend.a.v = _mm256_i32gather_ps((float *)lerp_lut, indexa.v, sizeof(float));
                 
-                auto output_pixel8 = v4_lane_to_rgba8(lerp(output, blend, big_image_blend));
+                auto output_pixel8 = v4_8x_to_rgba8(lerp(output, blend, big_image_blend));
                 
                 _mm256_storeu_si256((__m256i *)dest, output_pixel8.v);
                 
@@ -281,39 +281,39 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
                 int8 y2 = texel_y + one;
                 int8 y3 = texel_y + two;
                 
-                v4_lane texel00 = rgba8_to_v4_lane(im.get_pixel8(x0, y0));
-                v4_lane texel10 = rgba8_to_v4_lane(im.get_pixel8(x1, y0));
-                v4_lane texel20 = rgba8_to_v4_lane(im.get_pixel8(x2, y0));
-                v4_lane texel30 = rgba8_to_v4_lane(im.get_pixel8(x3, y0));
+                v4_8x texel00 = rgba8_to_v4_8x(im.get_pixel8(x0, y0));
+                v4_8x texel10 = rgba8_to_v4_8x(im.get_pixel8(x1, y0));
+                v4_8x texel20 = rgba8_to_v4_8x(im.get_pixel8(x2, y0));
+                v4_8x texel30 = rgba8_to_v4_8x(im.get_pixel8(x3, y0));
                 
-                v4_lane texel01 = rgba8_to_v4_lane(im.get_pixel8(x0, y1));
-                v4_lane texel11 = rgba8_to_v4_lane(im.get_pixel8(x1, y1));
-                v4_lane texel21 = rgba8_to_v4_lane(im.get_pixel8(x2, y1));
-                v4_lane texel31 = rgba8_to_v4_lane(im.get_pixel8(x3, y1));
+                v4_8x texel01 = rgba8_to_v4_8x(im.get_pixel8(x0, y1));
+                v4_8x texel11 = rgba8_to_v4_8x(im.get_pixel8(x1, y1));
+                v4_8x texel21 = rgba8_to_v4_8x(im.get_pixel8(x2, y1));
+                v4_8x texel31 = rgba8_to_v4_8x(im.get_pixel8(x3, y1));
                 
-                v4_lane texel02 = rgba8_to_v4_lane(im.get_pixel8(x0, y2));
-                v4_lane texel12 = rgba8_to_v4_lane(im.get_pixel8(x1, y2));
-                v4_lane texel22 = rgba8_to_v4_lane(im.get_pixel8(x2, y2));
-                v4_lane texel32 = rgba8_to_v4_lane(im.get_pixel8(x3, y2));
+                v4_8x texel02 = rgba8_to_v4_8x(im.get_pixel8(x0, y2));
+                v4_8x texel12 = rgba8_to_v4_8x(im.get_pixel8(x1, y2));
+                v4_8x texel22 = rgba8_to_v4_8x(im.get_pixel8(x2, y2));
+                v4_8x texel32 = rgba8_to_v4_8x(im.get_pixel8(x3, y2));
                 
-                v4_lane texel03 = rgba8_to_v4_lane(im.get_pixel8(x0, y3));
-                v4_lane texel13 = rgba8_to_v4_lane(im.get_pixel8(x1, y3));
-                v4_lane texel23 = rgba8_to_v4_lane(im.get_pixel8(x2, y3));
-                v4_lane texel33 = rgba8_to_v4_lane(im.get_pixel8(x3, y3));
+                v4_8x texel03 = rgba8_to_v4_8x(im.get_pixel8(x0, y3));
+                v4_8x texel13 = rgba8_to_v4_8x(im.get_pixel8(x1, y3));
+                v4_8x texel23 = rgba8_to_v4_8x(im.get_pixel8(x2, y3));
+                v4_8x texel33 = rgba8_to_v4_8x(im.get_pixel8(x3, y3));
                 
-                v4_lane texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
-                v4_lane texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
-                v4_lane texel2x = cubic_hermite(texel02, texel12, texel22, texel32, tx);
-                v4_lane texel3x = cubic_hermite(texel03, texel13, texel23, texel33, tx);
+                v4_8x texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
+                v4_8x texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
+                v4_8x texel2x = cubic_hermite(texel02, texel12, texel22, texel32, tx);
+                v4_8x texel3x = cubic_hermite(texel03, texel13, texel23, texel33, tx);
                 
-                v4_lane output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
+                v4_8x output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
                 
                 clamp(f_zero, &output.r, f_255);
                 clamp(f_zero, &output.g, f_255);
                 clamp(f_zero, &output.b, f_255);
                 clamp(f_zero, &output.a, f_255);
                 
-                v4_lane big_image_blend = {};
+                v4_8x big_image_blend = {};
                 
                 int8 indexr = (blend_y*row_count8 + blend_x)*four;
                 int8 indexg = indexr + one;
@@ -325,7 +325,7 @@ extern image make_mosaic_avx2(image im, float scale, int row_count, float blend,
                 big_image_blend.b.v = _mm256_i32gather_ps((float *)lerp_lut, indexb.v, sizeof(float));
                 big_image_blend.a.v = _mm256_i32gather_ps((float *)lerp_lut, indexa.v, sizeof(float));
                 
-                auto output_pixel8 = v4_lane_to_rgba8(lerp(output, blend, big_image_blend));
+                auto output_pixel8 = v4_8x_to_rgba8(lerp(output, blend, big_image_blend));
                 
                 _mm256_storeu_si256((__m256i *)dest, output_pixel8.v);
                 

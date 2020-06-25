@@ -60,7 +60,7 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
                 
                 uint *row = im.pixels + im.width*start_y;
                 
-                v4_lane acc = v4_lane(0, 0, 0, 0);
+                v4_4x acc = v4_4x(0, 0, 0, 0);
                 foreach(y; start_y..end_y) {
                     uint *pixel = row + start_x;
                     int advance = init_advance;
@@ -69,7 +69,7 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
                         uint *p = pixel;
                         uint4 pixel4;
                         static foreach(i; 0..4) pixel4.array[i] = *p++;
-                        v4_lane pixels = rgba4_to_v4_lane(pixel4);
+                        v4_4x pixels = rgba4_to_v4_4x(pixel4);
                         pixels *= contrib;
                         
                         acc.r += and_ps(mask, pixels.r);
@@ -98,7 +98,7 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
         }
     }
     
-    v4_lane cubic_hermite(ref v4_lane A, ref v4_lane B, ref v4_lane C, ref v4_lane D, float4 t) {
+    v4_4x cubic_hermite(ref v4_4x A, ref v4_4x B, ref v4_4x C, ref v4_4x D, float4 t) {
         // NOTE: https://www.shadertoy.com/view/MllSzX
         float4 one_half = 0.5f;
         float4 two      = 2.0f;
@@ -108,17 +108,17 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
         float4 t2 = t*t;
         float4 t3 = t*t2;
         
-        v4_lane half_A = A*one_half;
-        v4_lane half_B = B*one_half;
-        v4_lane half_C = C*one_half;
-        v4_lane half_D = D*one_half;
+        v4_4x half_A = A*one_half;
+        v4_4x half_B = B*one_half;
+        v4_4x half_C = C*one_half;
+        v4_4x half_D = D*one_half;
         
-        v4_lane neg_half_A = -half_A;
+        v4_4x neg_half_A = -half_A;
         
-        v4_lane a = neg_half_A + three*half_B - three*half_C + half_D;
-        v4_lane b = A - five*half_B + two*C - half_D;
-        v4_lane c = neg_half_A + half_C;
-        v4_lane d = B;
+        v4_4x a = neg_half_A + three*half_B - three*half_C + half_D;
+        v4_4x b = A - five*half_B + two*C - half_D;
+        v4_4x c = neg_half_A + half_C;
+        v4_4x d = B;
         
         return a*t3 + b*t2 + c*t + d;
     }
@@ -199,32 +199,32 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
             int4  y2 = texel_y + one;
             int4  y3 = texel_y + two;
             
-            v4_lane texel00 = im.get_pixel4(x0, y0).rgba4_to_v4_lane;
-            v4_lane texel10 = im.get_pixel4(x1, y0).rgba4_to_v4_lane;
-            v4_lane texel20 = im.get_pixel4(x2, y0).rgba4_to_v4_lane;
-            v4_lane texel30 = im.get_pixel4(x3, y0).rgba4_to_v4_lane;
+            v4_4x texel00 = im.get_pixel4(x0, y0).rgba4_to_v4_4x;
+            v4_4x texel10 = im.get_pixel4(x1, y0).rgba4_to_v4_4x;
+            v4_4x texel20 = im.get_pixel4(x2, y0).rgba4_to_v4_4x;
+            v4_4x texel30 = im.get_pixel4(x3, y0).rgba4_to_v4_4x;
             
-            v4_lane texel01 = im.get_pixel4(x0, y1).rgba4_to_v4_lane;
-            v4_lane texel11 = im.get_pixel4(x1, y1).rgba4_to_v4_lane;
-            v4_lane texel21 = im.get_pixel4(x2, y1).rgba4_to_v4_lane;
-            v4_lane texel31 = im.get_pixel4(x3, y1).rgba4_to_v4_lane;
+            v4_4x texel01 = im.get_pixel4(x0, y1).rgba4_to_v4_4x;
+            v4_4x texel11 = im.get_pixel4(x1, y1).rgba4_to_v4_4x;
+            v4_4x texel21 = im.get_pixel4(x2, y1).rgba4_to_v4_4x;
+            v4_4x texel31 = im.get_pixel4(x3, y1).rgba4_to_v4_4x;
             
-            v4_lane texel02 = im.get_pixel4(x0, y2).rgba4_to_v4_lane;
-            v4_lane texel12 = im.get_pixel4(x1, y2).rgba4_to_v4_lane;
-            v4_lane texel22 = im.get_pixel4(x2, y2).rgba4_to_v4_lane;
-            v4_lane texel32 = im.get_pixel4(x3, y2).rgba4_to_v4_lane;
+            v4_4x texel02 = im.get_pixel4(x0, y2).rgba4_to_v4_4x;
+            v4_4x texel12 = im.get_pixel4(x1, y2).rgba4_to_v4_4x;
+            v4_4x texel22 = im.get_pixel4(x2, y2).rgba4_to_v4_4x;
+            v4_4x texel32 = im.get_pixel4(x3, y2).rgba4_to_v4_4x;
             
-            v4_lane texel03 = im.get_pixel4(x0, y3).rgba4_to_v4_lane;
-            v4_lane texel13 = im.get_pixel4(x1, y3).rgba4_to_v4_lane;
-            v4_lane texel23 = im.get_pixel4(x2, y3).rgba4_to_v4_lane;
-            v4_lane texel33 = im.get_pixel4(x3, y3).rgba4_to_v4_lane;
+            v4_4x texel03 = im.get_pixel4(x0, y3).rgba4_to_v4_4x;
+            v4_4x texel13 = im.get_pixel4(x1, y3).rgba4_to_v4_4x;
+            v4_4x texel23 = im.get_pixel4(x2, y3).rgba4_to_v4_4x;
+            v4_4x texel33 = im.get_pixel4(x3, y3).rgba4_to_v4_4x;
             
-            v4_lane texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
-            v4_lane texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
-            v4_lane texel2x = cubic_hermite(texel02, texel12, texel22, texel32, tx);
-            v4_lane texel3x = cubic_hermite(texel03, texel13, texel23, texel33, tx);
+            v4_4x texel0x = cubic_hermite(texel00, texel10, texel20, texel30, tx);
+            v4_4x texel1x = cubic_hermite(texel01, texel11, texel21, texel31, tx);
+            v4_4x texel2x = cubic_hermite(texel02, texel12, texel22, texel32, tx);
+            v4_4x texel3x = cubic_hermite(texel03, texel13, texel23, texel33, tx);
             
-            v4_lane output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
+            v4_4x output = cubic_hermite(texel0x, texel1x, texel2x, texel3x, ty);
             
             // NOTE: the compiler wouldn't inline this
             clamp(f_zero, &output.r, f_255);
@@ -232,7 +232,7 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
             clamp(f_zero, &output.b, f_255);
             clamp(f_zero, &output.a, f_255);
             
-            v4_lane big_image_blend;
+            v4_4x big_image_blend;
             int index;
             static foreach(i; 0..4) {
                 index = blend_y.array[i]*row_count + blend_x.array[i];
@@ -242,7 +242,7 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
                 big_image_blend.a.array[i] = lerp_lut[index].a;
             }
             
-            auto output_pixel4 = v4_lane_to_rgba4(lerp(output, blend, big_image_blend));
+            auto output_pixel4 = v4_4x_to_rgba4(lerp(output, blend, big_image_blend));
             
             storeUnaligned(cast(uint4 *)dest, output_pixel4);
             
