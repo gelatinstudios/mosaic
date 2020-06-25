@@ -39,3 +39,15 @@ pragma(inline) v4_lane clamp(float4 min, v4_lane *v, float4 max) {
     clamp(min, &v.a, max);
     return *v;
 }
+
+float4 to_float4(int4 i) {
+    return simd!(XMM.CVTDQ2PS)(i);
+}
+
+int4 to_int4(float4 f) {
+    return simd!(XMM.CVTPS2DQ)(f);
+}
+
+uint4 to_uint4(float4 f) {
+    return simd!(XMM.CVTPS2DQ)(f);
+}

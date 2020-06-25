@@ -1,4 +1,5 @@
 
+import math;
 import vector_math;
 
 pragma(inline) uint v4_to_rgba(v4 v) {
@@ -21,23 +22,21 @@ pragma(inline) v4 rgba_to_v4(uint u) {
 
 uint4 v4_lane_to_rgba4(v4_lane v) {
     uint4 result;
-    foreach(i; 0..4) {
-        result.array[i] |= cast(int)(v.r.array[i] + 0.5f) << 0;
-        result.array[i] |= cast(int)(v.g.array[i] + 0.5f) << 8;
-        result.array[i] |= cast(int)(v.b.array[i] + 0.5f) << 16;
-        result.array[i] |= cast(int)(v.a.array[i] + 0.5f) << 24;
-    }
+    float4 one_half = 0.5f;
+    result |=                     (to_uint4(v.r + one_half));
+    result |= simd!(XMM.PSLLD, 8) (to_uint4(v.g + one_half));
+    result |= simd!(XMM.PSLLD, 16)(to_uint4(v.b + one_half));
+    result |= simd!(XMM.PSLLD, 24)(to_uint4(v.a + one_half));
     return result;
 }
 
 v4_lane rgba4_to_v4_lane(uint4 u) {
+    uint4 mask = 0xff;
     v4_lane result;
-    foreach(i; 0..4) {
-        result.r.array[i] = cast(ubyte) (u.array[i] >> 0);
-        result.g.array[i] = cast(ubyte) (u.array[i] >> 8);
-        result.b.array[i] = cast(ubyte) (u.array[i] >> 16);
-        result.a.array[i] = cast(ubyte) (u.array[i] >> 24);
-    }
+    result.r = to_float4(                    (u) & mask);
+    result.g = to_float4(simd!(XMM.PSRLD, 8) (u) & mask);
+    result.b = to_float4(simd!(XMM.PSRLD, 16)(u) & mask);
+    result.a = to_float4(simd!(XMM.PSRLD, 24)(u) & mask);
     return result;
 }
 

@@ -131,14 +131,6 @@ image make_mosaic(bool flip)(image im, float scale, int row_count, float blend) 
         return simd!(XMM.CVTDQ2PS)(i);
     }
     
-    float4 to_float4(int4 i) {
-        return simd!(XMM.CVTDQ2PS)(i);
-    }
-    
-    int4 to_int4(float4 f) {
-        return simd!(XMM.CVTPS2DQ)(f);
-    }
-    
     float4 im_width  = cast(float) im.width;
     float4 im_height = cast(float) im.height;
     
